@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Serajia Milk Shop - Multi User Khata Book</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 10px; background: #f9f9f9; }
+  h1, h2 { text-align: center; color: #2c3e50; }
+  button, input, select {
+    font-size: 16px; padding: 8px; margin: 5px 0; border-radius: 6px; border: 1px solid #ccc; width: 100%;
+    box-sizing: border-box;
+  }
+  button { background: #27ae60; color: white; border: none; cursor: pointer; }
+  button:hover { background: #219150; }
+  .user-list button { width: auto; margin: 5px 5px 5px 0; }
+  .entry { background: white; padding: 10px; margin: 10px 0; border-radius: 10px; box-shadow: 0 0 6px #ccc; }
+  .entry strong { color: #2c3e50; }
+  .remove-btn {
+    background: #e74c3c; color: white; border: none; padding: 5px 8px; border-radius: 6px;
+    cursor: pointer; float: right;
+  }
+  @media (max-width:480px) {
+    body { padding: 5px; }
+    button, input, select { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Page containers -->
+<div id="homePage">
+  <h1>Serajia Milk Shop</h1>
+  <h2>Add New User</h2>
+  <input type="text" id="newUserName" placeholder="Enter user name" />
+  <button onclick="addUser()">Add User</button>
+  <h2>Users</h2>
+  <div id="usersList" class="user-list"></div>
+</div>
+
+<div id="userPage" style="display:none;">
+  <button onclick="goHome()" style="margin-bottom:15px;">← Back to Users</button>
+  <h2 id="userTitle"></h2>
+
+  <form id="entryForm">
+    <label>Date</label>
+    <input type="date" id="entryDate" required />
+    <label>Milk (Litres)</label>
+    <input type="number" id="entryMilk" value="0" min="0" />
+    <label>Yogurt (Kg)</label>
+    <input type="number" id="entryYogurt" value="0" min="0" />
+    <button type="submit">Add Entry</button>
+  </form>
+
+  <h3>Entries</h3>
+  <div id="entriesContainer"></div>
+  <h3>Total Milk: <span id="totalMilk">0</span> L</h3>
+  <h3>Total Yogurt: <span id="totalYogurt">0</span> Kg</h3>
+</div>
+
+<script>
+  // Prices (can be used later if needed)
+  const prices = { milk: 200, yogurt: 250 };
+
+  // State variables
+  let users = JSON.parse(localStorage.getItem('milkShopUsers') || '[]');
+  let currentUser = null;
+
+  // DOM Elements
+  const homePage = document.getElementById('homePage');
+  const usersList = document.getElementById('usersList');
+  const userPage = document.getElementById('userPage');
+  const userTitle = document.getElementById('userTitle');
+  const entriesContainer = document.getElementById('entriesContainer');
+  const totalMilkSpan = document.getElementById('totalMilk');
+  const totalYogurtSpan = document.getElementById('totalYogurt');
+  const entryForm = document.getElementById('entryForm');
+  const newUserNameInput = document.getElementById('newUserName');
+
+  // Save users data to localStorage
+  function saveUsers() {
+    localStorage.setItem('milkShopUsers', JSON.stringify(users));
+  }
+
+  // Display users on home page
+  function displayUsers() {
+    usersList.innerHTML = '';
+    if(users.length === 0) {
+      usersList.innerHTML = '<p>No users added yet.</p>';
+      return;
+    }
+    users.forEach((user, index) => {
+      const btn = document.createElement('button');
+      btn.textContent = user.name;
+      btn.onclick = () => openUserPage(index);
+      usersList.appendChild(btn);
+    });
+  }
+
+  // Add new user
+  function addUser() {
+    const name = newUserNameInput.value.trim();
+    if(!name) {
+      alert('Please enter user name');
+      return;
+    }
+    if(users.some(u => u.name.toLowerCase() === name.toLowerCase())) {
+      alert('User already exists!');
+      return;
+    }
+    users.push({ name, entries: [] });
+    saveUsers();
+    newUserNameInput.value = '';
+    displayUsers();
+  }
+
+  // Go back to home page
+  function goHome() {
+    currentUser = null;
+    userPage.style.display = 'none';
+    homePage.style.display = 'block';
+  }
+
+  // Open individual user page
+  function openUserPage(index) {
+    currentUser = index;
+    homePage.style.display = 'none';
+    userPage.style.display = 'block';
+    userTitle.textContent = `Entries for ${users[currentUser].name}`;
+    displayEntries();
+  }
+
+  // Display user entries and totals
+  function displayEntries() {
+    entriesContainer.innerHTML = '';
+    const userEntries = users[currentUser].entries;
+    if(userEntries.length === 0) {
+      entriesContainer.innerHTML = '<p>No entries yet.</p>';
+    } else {
+      userEntries.forEach((entry, i) => {
+        const div = document.createElement('div');
+        div.className = 'entry';
+        div.innerHTML = `
+          <button class="remove-btn" onclick="removeEntry(${i})">Remove</button>
+          <strong>Date:</strong> ${entry.date} |
+          Milk: ${entry.milk} L |
+          Yogurt: ${entry.yogurt} Kg
+        `;
+        entriesContainer.appendChild(div);
+      });
+    }
+    // Calculate totals
+    let totalMilk = 0, totalYogurt = 0;
+    userEntries.forEach(e => {
+      totalMilk += Number(e.milk);
+      totalYogurt += Number(e.yogurt);
+    });
+    totalMilkSpan.textContent = totalMilk.toFixed(2);
+    totalYogurtSpan.textContent = totalYogurt.toFixed(2);
+  }
+
+  // Add entry for current user
+  entryForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const date = document.getElementById('entryDate').value;
+    const milk = parseFloat(document.getElementById('entryMilk').value) || 0;
+    const yogurt = parseFloat(document.getElementById('entryYogurt').value) || 0;
+
+    if(!date) {
+      alert('Please enter a date');
+      return;
+    }
+
+    users[currentUser].entries.push({ date, milk, yogurt });
+    saveUsers();
+    displayEntries();
+    entryForm.reset();
+  });
+
+  // Remove an entry
+  function removeEntry(entryIndex) {
+    if(confirm('Are you sure you want to remove this entry?')) {
+      users[currentUser].entries.splice(entryIndex, 1);
+      saveUsers();
+      displayEntries();
+    }
+  }
+
+  // Make removeEntry global so inline onclick works
+  window.removeEntry = removeEntry;
+  window.addUser = addUser;
+  window.goHome = goHome;
+  window.openUserPage = openUserPage;
+
+  // Initial display of users on home page
+  displayUsers();
+</script>
+
+</body>
+</html>
